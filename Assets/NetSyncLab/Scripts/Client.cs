@@ -11,6 +11,7 @@ namespace NetSyncLab.Lockstep
         [Header("UI")]
         public GameObject joinRoomUI;
         public GameObject exitRoomUI;
+        public GameObject replayUI;
         public GameObject tipUI;
         public Text tipText;
 
@@ -21,6 +22,8 @@ namespace NetSyncLab.Lockstep
         [Header("Lockstep")]
         [SerializeField]
         private float m_frameDelta = 0.033f;
+
+        public bool IsReplay { get; set; }
 
         public bool HasSetup { get; private set; }
         public bool IsRunning { get; private set; }
@@ -40,8 +43,9 @@ namespace NetSyncLab.Lockstep
 
         private float m_lastTime;
         private Dictionary<int, FrameInput> m_inputs = new Dictionary<int, FrameInput>();
-
         private Dictionary<int, GameObject> m_allPlayers = new Dictionary<int, GameObject>();
+        private PlayerInfo[] m_originSnapshot;
+        private Dictionary<int, List<NetworkMessage>> m_messages = new Dictionary<int, List<NetworkMessage>>();
 
 
         #region Process Messages
@@ -65,6 +69,8 @@ namespace NetSyncLab.Lockstep
         {
             joinRoomUI?.SetActive(false);
             exitRoomUI?.SetActive(true);
+
+            m_originSnapshot = msg.players;
 
             SpawnPlayers(msg.players);
 
@@ -98,6 +104,11 @@ namespace NetSyncLab.Lockstep
             {
                 m_allPlayers.Remove(msg.playerId);
                 Destroy(player);
+
+                if (!IsReplay)
+                {
+                    RecordMessage(CurTick, msg);
+                }
             }
         }
 
@@ -118,6 +129,26 @@ namespace NetSyncLab.Lockstep
 
         #region Lifecycle
 
+        private void OnStartReplay()
+        {
+            IsReplay = true;
+
+            DestroyPlayers();
+            SpawnPlayers(m_originSnapshot);
+
+            OnStartRunning();
+
+            Debug.Log("[client] start replay");
+        }
+
+        private void OnStopReplay()
+        {
+            IsReplay = false;
+            OnStopRunning();
+
+            Debug.Log("[client] stop replay");
+        }
+
         private void OnSetup()
         {
             if (HasSetup)
@@ -129,11 +160,13 @@ namespace NetSyncLab.Lockstep
             joinRoomUI?.SetActive(true);
             exitRoomUI?.GetComponentInChildren<Button>().onClick.AddListener(ExitRoom);
             exitRoomUI?.SetActive(false);
+            replayUI?.GetComponentInChildren<Button>().onClick.AddListener(StartReplay);
+            replayUI?.SetActive(false);
 
             HasSetup = true;
             IsRunning = false;
             m_inputs.Clear();
-            m_allPlayers.Clear();
+            m_messages.Clear();
 
             NetworkClient.OnDisconnectedEvent += OnDisconn;
             NetworkClient.RegisterHandler<Msg_S2C_JoinRoomResult>(OnMsgJoinRoomResult);
@@ -170,16 +203,33 @@ namespace NetSyncLab.Lockstep
 
         private void Step()
         {
-            SendInput();
+            if (!IsReplay)
+            {
+                SendInput();
+            }
 
             FrameInput finput;
             if (TryGetFrameInput(CurTick, out finput))
             {
                 ProcessFrameInput(finput);
-                m_inputs.Remove(CurTick);
+                if (IsReplay)
+                {
+                    ProcessMessages();
+                }
 
                 ++CurTick;
             }
+        }
+
+        private void OnStopRunning()
+        {
+            if (!IsRunning)
+                return;
+
+            Debug.Log($"[client] stop running");
+
+            IsRunning = false;
+            DestroyPlayers();
         }
 
         private void OnShutdown()
@@ -189,15 +239,13 @@ namespace NetSyncLab.Lockstep
 
             Debug.Log($"[client] shutdown");
 
-            HasSetup = false;
-            IsRunning = false;
-            m_inputs.Clear();
-
-            foreach (GameObject player in m_allPlayers.Values)
+            if (IsRunning)
             {
-                Destroy(player);
+                OnStopRunning();
             }
-            m_allPlayers.Clear();
+            HasSetup = false;
+            m_inputs.Clear();
+            m_messages.Clear();
 
             NetworkClient.OnDisconnectedEvent -= OnDisconn;
             NetworkClient.UnregisterHandler<Msg_S2C_JoinRoomResult>();
@@ -207,6 +255,11 @@ namespace NetSyncLab.Lockstep
         }
 
         #endregion
+
+        public void StartReplay()
+        {
+            OnStartReplay();
+        }
 
         public void JoinRoom()
         {
@@ -219,8 +272,9 @@ namespace NetSyncLab.Lockstep
             Msg_C2S_ExitRoom msg = new Msg_C2S_ExitRoom { playerId = PlayerId };
             NetworkClient.Send(msg);
 
-            OnShutdown();
+            OnStopRunning();
 
+            replayUI?.SetActive(true);
             exitRoomUI?.SetActive(false);
         }
 
@@ -257,6 +311,15 @@ namespace NetSyncLab.Lockstep
             go.transform.rotation = Quaternion.Euler(info.originRotat);
 
             return go;
+        }
+
+        private void DestroyPlayers()
+        {
+            foreach (GameObject player in m_allPlayers.Values)
+            {
+                Destroy(player);
+            }
+            m_allPlayers.Clear();
         }
 
         private void SendInput()
@@ -305,6 +368,36 @@ namespace NetSyncLab.Lockstep
                     Vector3 vaxis = pinput.moveInput;
                     // todo
                     player.transform.Translate(vaxis * moveSpeed, Space.World);
+                }
+            }
+        }
+
+        private void RecordMessage(int tick, NetworkMessage msg)
+        {
+            List<NetworkMessage> val;
+            if (m_messages.TryGetValue(tick, out val))
+            {
+                val.Add(msg);
+            }
+            else
+            {
+                m_messages.Add(tick, new List<NetworkMessage> { msg });
+            }
+        }
+
+        private void ProcessMessages()
+        {
+            List<NetworkMessage> val;
+            if (!m_messages.TryGetValue(CurTick, out val))
+            {
+                return;
+            }
+
+            foreach (NetworkMessage nm in val)
+            {
+                if (nm is Msg_S2C_PlayerExit)
+                {
+                    OnMsgPlayerExit((Msg_S2C_PlayerExit)nm);
                 }
             }
         }

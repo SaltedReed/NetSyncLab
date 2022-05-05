@@ -533,6 +533,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   joinRoomUI: {fileID: 2114800657}
   exitRoomUI: {fileID: 627092886}
+  replayUI: {fileID: 2114800660}
   tipUI: {fileID: 2114800659}
   tipText: {fileID: 2114800658}
   playerPrefab: {fileID: 3192289569336287671, guid: ad2ceaedf151e874da45bbbbe7542a2d,
@@ -753,6 +754,12 @@ MonoBehaviour:
 --- !u!1 &2114800659 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 1601756512018951357, guid: 234f1653357f17640b0d2533880d763e,
+    type: 3}
+  m_PrefabInstance: {fileID: 2114800656}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &2114800660 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4514488412253346704, guid: 234f1653357f17640b0d2533880d763e,
     type: 3}
   m_PrefabInstance: {fileID: 2114800656}
   m_PrefabAsset: {fileID: 0}

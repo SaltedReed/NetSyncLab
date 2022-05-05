@@ -202,6 +202,16 @@ namespace NetSyncLab.Lockstep
             }
         }
 
+        private void OnStopRunning()
+        {
+            if (!IsRunning)
+                return;
+
+            Debug.Log($"[server] stop running");
+
+            IsRunning = false;
+        }
+
         private void OnShutdown()
         {
             if (!HasSetup)
@@ -209,8 +219,11 @@ namespace NetSyncLab.Lockstep
 
             Debug.Log($"[server] shutdown");
 
+            if (IsRunning)
+            {
+                OnStopRunning();
+            }
             HasSetup = false;
-            IsRunning = false;
             m_inputs.Clear();
             m_allClients.Clear();
 
