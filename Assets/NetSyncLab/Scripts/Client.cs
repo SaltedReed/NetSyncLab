@@ -198,6 +198,11 @@ namespace NetSyncLab.Lockstep
                 m_lastTime = Time.time;
 
                 Step();
+
+                if (IsReplay && CurTick == m_inputs.Count-1)
+                {
+                    OnStopReplay();
+                }
             }
         }
 

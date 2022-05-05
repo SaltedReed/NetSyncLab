@@ -598,6 +598,16 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4854001952504943570, guid: 234f1653357f17640b0d2533880d763e,
         type: 3}
+      propertyPath: lsClient
+      value: 
+      objectReference: {fileID: 1531336119}
+    - target: {fileID: 4854001952504943570, guid: 234f1653357f17640b0d2533880d763e,
+        type: 3}
+      propertyPath: lsServer
+      value: 
+      objectReference: {fileID: 520429928}
+    - target: {fileID: 4854001952504943570, guid: 234f1653357f17640b0d2533880d763e,
+        type: 3}
       propertyPath: latencySim
       value: 
       objectReference: {fileID: 701446296}

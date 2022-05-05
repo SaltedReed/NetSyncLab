@@ -1,11 +1,11 @@
-﻿using UnityEngine;
-using Mirror;
+﻿using Mirror;
 
 namespace NetSyncLab.Lockstep
 {
 
     public struct Msg_C2S_JoinRoom : NetworkMessage
     {
+        // cannot use connectionId, because all of them are zero, no idea why
         public int connHash;
     }
 
